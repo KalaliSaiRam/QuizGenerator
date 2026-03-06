@@ -128,3 +128,19 @@ async def generate_quiz(
         "word_count": pipe["word_count"],
         "chunks": pipe["num_chunks"]
     }
+
+@router.post("/submit-quiz")
+async def submit_quiz(data: dict):
+    questions = data["questions"]
+    answers = data["answers"]
+    topic = data["topic"]
+
+    from ai_engine.engine import analyze_performance
+
+    result = analyze_performance(
+            questions,
+            answers,
+            topic
+    )
+
+    return result

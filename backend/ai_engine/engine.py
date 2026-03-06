@@ -320,3 +320,34 @@ Return JSON array:
             log.warning(f"Chunk failed: {e}")
 
     return questions[:count]
+
+
+def analyze_performance(questions, answers, topic):
+
+    score = 0
+    total = len(questions)
+
+    for i, q in enumerate(questions):
+        if answers[i] == q["correct"]:
+            score += 1
+
+    percentage = (score / total) * 100 if total > 0 else 0
+
+    # simple grading logic
+    if percentage >= 80:
+        grade = "A"
+    elif percentage >= 60:
+        grade = "B"
+    elif percentage >= 40:
+        grade = "C"
+    else:
+        grade = "D"
+
+    return {
+        "score": score,
+        "total": total,
+        "grade": grade,
+        "strengths": ["Conceptual understanding improving"],
+        "weak_areas": ["Review incorrect questions"],
+        "study_tip": "Revise topic again and practice similar questions."
+    }
