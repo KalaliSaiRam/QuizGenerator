@@ -1,0 +1,150 @@
+.result-card-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.result-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: var(--gray-400);
+  transition: color 0.3s ease;
+}
+
+.close-btn:hover {
+  color: var(--gray-600);
+}
+
+.result-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.result-header h2 {
+  color: var(--gray-800);
+  font-size: 2rem;
+}
+
+.score-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 8px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  background: var(--gray-50);
+}
+
+.score-number {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--gray-800);
+  line-height: 1;
+}
+
+.score-total {
+  font-size: 1.2rem;
+  color: var(--gray-500);
+}
+
+.grade-section {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.grade-section h3 {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.summary-section {
+  background: var(--gray-50);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.review-answers-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.review-answers-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}

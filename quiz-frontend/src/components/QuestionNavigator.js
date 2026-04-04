@@ -1,4 +1,5 @@
 import React from "react";
+import "./QuestionNavigator.css";
 
 function QuestionNavigator({
   questions,
@@ -8,82 +9,90 @@ function QuestionNavigator({
   review,
   submitted
 }) {
-
   return (
+    <div className="navigator-container slide-in">
+      <div className="navigator-header">
+        <h3>Question Navigator</h3>
+        <div className="stats-summary">
+          <div className="stat-item">
+            <span className="stat-dot answered"></span>
+            <span>Answered: {answers.filter(a => a !== undefined).length}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-dot review"></span>
+            <span>Review: {review.filter(r => r).length}</span>
+          </div>
+          {submitted && (
+            <>
+              <div className="stat-item">
+                <span className="stat-dot correct"></span>
+                <span>Correct</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-dot wrong"></span>
+                <span>Wrong</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
-    <div
-      style={{
-        width: "200px",
-        borderRight: "1px solid #ddd",
-        padding: "15px"
-      }}
-    >
+      <div className="questions-grid">
+        {questions.map((q, i) => {
+          const answered = answers[i] !== undefined;
+          const markedReview = review && review[i];
 
-      <h3>Questions</h3>
-
-      {questions.map((q, i) => {
-
-        const answered = answers[i] !== undefined;
-        const markedReview = review && review[i];
-
-        let background = "#eee";
-        let color = "black";
-
-        // AFTER SUBMISSION → show correct/wrong
-        if (submitted && answered) {
-
-          if (answers[i] === q.correct) {
-            background = "#4caf50"; // correct
-            color = "white";
-          } else {
-            background = "#f44336"; // wrong
-            color = "white";
-          }
-
-        } else {
-
-          // BEFORE SUBMISSION
-          if (markedReview) {
-            background = "#ff9800";
-            color = "white";
+          let statusClass = "";
+          if (submitted && answered) {
+            statusClass = answers[i] === q.correct ? "correct" : "wrong";
+          } else if (markedReview) {
+            statusClass = "review";
           } else if (answered) {
-            background = "#4caf50";
-            color = "white";
+            statusClass = "answered";
           }
 
-        }
+          return (
+            <button
+              key={i}
+              onClick={() => setCurrentQuestion(i)}
+              className={`question-btn ${statusClass} ${
+                currentQuestion === i ? "active" : ""
+              }`}
+            >
+              {i + 1}
+            </button>
+          );
+        })}
+      </div>
 
-        return (
-
-          <button
-            key={i}
-            onClick={() => setCurrentQuestion(i)}
-            style={{
-              width: "40px",
-              height: "40px",
-              margin: "5px",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              background: background,
-              color: color,
-              outline:
-                currentQuestion === i
-                  ? "2px solid #1976d2"
-                  : "none"
-            }}
-          >
-            {i + 1}
-          </button>
-
-        );
-
-      })}
-
+      <div className="legend">
+        <div className="legend-item">
+          <span className="legend-dot current"></span>
+          <span>Current</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-dot answered"></span>
+          <span>Answered</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-dot review"></span>
+          <span>Review</span>
+        </div>
+        {submitted && (
+          <>
+            <div className="legend-item">
+              <span className="legend-dot correct"></span>
+              <span>Correct</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot wrong"></span>
+              <span>Wrong</span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-
   );
-
 }
 
 export default QuestionNavigator;

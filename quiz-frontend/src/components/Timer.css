@@ -1,0 +1,60 @@
+.timer-container {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.timer-icon {
+  font-size: 1.5rem;
+}
+
+.timer-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.timer-value.success {
+  color: var(--success-color);
+}
+
+.timer-value.warning {
+  color: var(--warning-color);
+}
+
+.timer-value.danger {
+  color: var(--danger-color);
+  animation: pulse 1s infinite;
+}
+
+.timer-progress {
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.timer-progress-bar {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.timer-progress-bar.success {
+  background: var(--success-color);
+}
+
+.timer-progress-bar.warning {
+  background: var(--warning-color);
+}
+
+.timer-progress-bar.danger {
+  background: var(--danger-color);
+}

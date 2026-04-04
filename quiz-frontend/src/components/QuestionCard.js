@@ -1,9 +1,8 @@
 import React from "react";
+import "./QuestionCard.css";
 
 function formatQuestion(text) {
-
   if (!text) return "";
-
   return text
     .replace(/ 1\./g, "\n\n1.")
     .replace(/ 2\./g, "\n2.")
@@ -17,68 +16,68 @@ function QuestionCard({
   selectAnswer,
   submitted
 }) {
+  const selectedAnswer = answers[index];
 
   return (
+    <div className="question-card fade-in">
+      <div className="question-header">
+        <span className="question-number">Question {index + 1}</span>
+        {!submitted && selectedAnswer !== undefined && (
+          <span className="answered-badge">
+            <span className="check-icon">✓</span> Answered
+          </span>
+        )}
+      </div>
 
-    <div
-      style={{
-        marginBottom: "25px",
-        padding: "15px",
-        border: "1px solid #ddd",
-        borderRadius: "8px"
-      }}
-    >
-
-      <h3 style={{ whiteSpace: "pre-line" }}>
-        {index + 1}. {formatQuestion(question.question)}
+      <h3 className="question-text" style={{ whiteSpace: "pre-line" }}>
+        {formatQuestion(question.question)}
       </h3>
 
-      {question.options.map((opt, i) => (
+      <div className="options-container">
+        {question.options.map((opt, i) => {
+          const isSelected = selectedAnswer === i;
+          const isCorrect = submitted && i === question.correct;
+          const isWrong = submitted && isSelected && i !== question.correct;
 
-        <div key={i} style={{ marginBottom: "6px" }}>
+          let optionClass = "option-item";
+          if (submitted) {
+            if (isCorrect) optionClass += " correct";
+            else if (isWrong) optionClass += " wrong";
+          } else if (isSelected) {
+            optionClass += " selected";
+          }
 
-          <label>
-
-            <input
-              type="radio"
-              name={`q-${index}`}
-              checked={answers[index] === i}
-              disabled={submitted}
-              onChange={() => selectAnswer(index, i)}
-            />
-
-            {" "} {opt}
-
-          </label>
-
-        </div>
-
-      ))}
-
-      {submitted && (
-        <div style={{ marginTop: "10px", color: "green" }}>
-          <b>Correct Answer:</b> {question.options[question.correct]}
-        </div>
-      )}
+          return (
+            <div
+              key={i}
+              className={optionClass}
+              onClick={() => !submitted && selectAnswer(index, i)}
+            >
+              <div className="option-marker">
+                {String.fromCharCode(65 + i)}
+              </div>
+              <div className="option-text">{opt}</div>
+              {submitted && isCorrect && (
+                <span className="result-icon correct">✓</span>
+              )}
+              {submitted && isWrong && (
+                <span className="result-icon wrong">✗</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {submitted && question.explanation && (
-        <div
-          style={{
-            marginTop: "10px",
-            background: "#f4f6ff",
-            padding: "10px",
-            borderRadius: "6px"
-          }}
-        >
-          <b>Explanation:</b>
-          <p style={{ whiteSpace: "pre-line" }}>
-            {question.explanation}
-          </p>
+        <div className="explanation-section slide-in">
+          <div className="explanation-header">
+            <span className="explanation-icon">📚</span>
+            <h4>Explanation</h4>
+          </div>
+          <p style={{ whiteSpace: "pre-line" }}>{question.explanation}</p>
         </div>
       )}
-
     </div>
-
   );
 }
 
