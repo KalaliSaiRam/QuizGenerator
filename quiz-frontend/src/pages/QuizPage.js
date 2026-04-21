@@ -51,7 +51,8 @@ function QuizPage({ questions, topic }) {
     try {
       const formattedAnswers = questions.map((_, index) => answers[index]);
       
-      const res = await axios.post("http://localhost:8000/submit-quiz", {
+      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
+      const res = await axios.post(`${apiUrl}/submit-quiz`, {
         questions,
         answers: formattedAnswers,
         topic

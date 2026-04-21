@@ -33,7 +33,11 @@ def init_db():
 
 init_db()
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import platform
+
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# On Linux (Render), tesseract should be in the system path so we don't set tesseract_cmd
 router = APIRouter()
 
 # ----------------------------

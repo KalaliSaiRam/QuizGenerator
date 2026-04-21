@@ -53,8 +53,9 @@ function UploadPage({ setQuestions, setTopic }) {
       formData.append("count", count);
       formData.append("input_type", inputType);
 
+      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
       const res = await axios.post(
-        "http://localhost:8000/generate-quiz",
+        `${apiUrl}/generate-quiz`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
