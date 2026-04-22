@@ -116,12 +116,17 @@ function QuizPage({ questions, topic }) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getTimerColor = () => {
-    const percentage = (timeLeft / (questions.length * 60)) * 100;
-    if (percentage > 50) return "normal";
-    if (percentage > 25) return "warning";
-    return "danger";
-  };
+const getTimerColor = () => {
+  const totalTime = questions.length * 60;
+
+  if (totalTime === 0) return "normal"; // ✅ prevent crash
+
+  const percentage = (timeLeft / totalTime) * 100;
+
+  if (percentage > 50) return "normal";
+  if (percentage > 25) return "warning";
+  return "danger";
+};
 
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
