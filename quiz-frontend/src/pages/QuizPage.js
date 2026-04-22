@@ -48,7 +48,7 @@ function QuizPage({ questions, topic }) {
     }
   };
 
-  const submitQuiz = async () => {
+ const submitQuiz = async () => {
   try {
     const formattedAnswers = questions.map((_, index) => answers[index]);
 
@@ -75,7 +75,7 @@ function QuizPage({ questions, topic }) {
       },
       {
         headers: {
-          "x-user-id": userId   // ✅ FIXED HEADER
+          "x-user-id": userId   // ✅ FIXED
         }
       }
     );
@@ -88,12 +88,27 @@ function QuizPage({ questions, topic }) {
     console.error("Submit Error:", err);
 
     if (err.response) {
-      alert(`Error: ${err.response.data.detail || "Server error"}`);
+      alert(err.response.data.detail || "Server error");
     } else {
-      alert("Network error. Check backend or CORS.");
+      alert("Network/CORS error");
     }
   }
 };
+
+//     setResult(res.data);
+//     setSubmitted(true);
+//     setShowResult(true);
+
+//   } catch (err) {
+//     console.error("Submit Error:", err);
+
+//     if (err.response) {
+//       alert(`Error: ${err.response.data.detail || "Server error"}`);
+//     } else {
+//       alert("Network error. Check backend or CORS.");
+//     }
+//   }
+// };
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
