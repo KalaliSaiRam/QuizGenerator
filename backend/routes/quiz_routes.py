@@ -2,7 +2,6 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Header
 from ai_engine.engine import process_input, generate_questions, analyze_performance
 from pydantic import BaseModel
 from docx import Document
-from PIL import Image
 import pdfplumber
 import tempfile
 import os
@@ -14,19 +13,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ----------------------------
-# Database setup
+# Database setup (with check)
 # ----------------------------
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI")
 
 try:
-    mongo_client = pymongo.MongoClient(MONGO_URI)
+    mongo_client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    mongo_client.server_info()  # force connection
+
     db = mongo_client["quiz_database"]
     history_collection = db["history"]
     users_collection = db["users"]
+
+    print("✅ MongoDB Connected")
+
 except Exception as e:
-    print(f"Error connecting to MongoDB: {e}")
+    print("❌ MongoDB connection failed:", e)
     history_collection = None
     users_collection = None
+
 
 router = APIRouter()
 
@@ -62,31 +67,32 @@ def extract_docx(file_path):
     return "\n".join(parts)
 
 # ----------------------------
-# Image Extraction (DISABLED OCR)
+# Image Extraction (Disabled)
 # ----------------------------
 def extract_image(file_path):
     return "Image OCR not supported in deployed version"
 
 # ----------------------------
-# Adaptive Feature Helpers
+# Adaptive Stats
 # ----------------------------
 def get_user_performance_stats(user_id: str):
     if history_collection is None or not user_id:
         return None
+
     try:
         rows = list(history_collection.find(
             {"user_id": user_id},
             {"topic": 1, "percentage": 1, "_id": 0}
         ))
+
         if not rows:
             return None
 
-        total_acc = sum([r.get("percentage", 0) for r in rows]) / len(rows)
+        total_acc = sum(r.get("percentage", 0) for r in rows) / len(rows)
 
         topic_scores = {}
         for r in rows:
-            t = r.get("topic", "Unknown")
-            topic_scores.setdefault(t, []).append(r.get("percentage", 0))
+            topic_scores.setdefault(r["topic"], []).append(r["percentage"])
 
         weak_topics = [
             t for t, scores in topic_scores.items()
@@ -99,7 +105,7 @@ def get_user_performance_stats(user_id: str):
         }
 
     except Exception as e:
-        print("Performance stats error:", e)
+        print("Stats error:", e)
         return None
 
 # ----------------------------
@@ -122,22 +128,20 @@ async def signup(user: UserSignup):
     if users_collection is None:
         raise HTTPException(status_code=500, detail="Database not connected")
 
-    existing = users_collection.find_one({"email": user.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    if users_collection.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="Email already exists")
 
     hashed_pw = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
 
-    new_user = {
+    res = users_collection.insert_one({
         "name": user.name,
         "email": user.email,
         "password": hashed_pw.decode(),
         "created_at": datetime.datetime.utcnow()
-    }
-
-    res = users_collection.insert_one(new_user)
+    })
 
     return {"user_id": str(res.inserted_id), "name": user.name}
+
 
 @router.post("/login")
 async def login(user: UserLogin):
@@ -145,6 +149,7 @@ async def login(user: UserLogin):
         raise HTTPException(status_code=500, detail="Database not connected")
 
     record = users_collection.find_one({"email": user.email})
+
     if not record:
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
@@ -221,12 +226,9 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
 
     result = analyze_performance(data.questions, data.answers, data.topic)
 
-    percentage = (
-        (result["score"] / result["total"]) * 100
-        if result["total"] > 0 else 0
-    )
+    percentage = (result["score"] / result["total"]) * 100 if result["total"] > 0 else 0
 
-    if history_collection is not None:
+    if history_collection:
         history_collection.insert_one({
             "user_id": x_user_id,
             "topic": data.topic,
@@ -244,22 +246,18 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
 # ----------------------------
 @router.get("/history")
 async def get_history(x_user_id: str = Header(None)):
-    if history_collection is None:
-        return {"history": []}
-
     if not x_user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    if history_collection is None:
+        return {"history": []}
+
     rows = list(history_collection.find({"user_id": x_user_id}).sort("timestamp", -1))
 
-    history_list = []
-    for row in rows:
-        row["id"] = str(row["_id"])
-        del row["_id"]
+    for r in rows:
+        r["id"] = str(r["_id"])
+        del r["_id"]
+        if isinstance(r.get("timestamp"), datetime.datetime):
+            r["timestamp"] = r["timestamp"].isoformat()
 
-        if isinstance(row.get("timestamp"), datetime.datetime):
-            row["timestamp"] = row["timestamp"].isoformat() + "Z"
-
-        history_list.append(row)
-
-    return {"history": history_list}
+    return {"history": rows}
