@@ -324,12 +324,34 @@ async def get_history(x_user_id: str = Header(None)):
     if history_collection is None:
         return {"history": []}
 
-    rows = list(history_collection.find({"user_id": x_user_id}).sort("timestamp", -1))
+    try:
+        rows = list(
+            history_collection
+            .find({"user_id": x_user_id})
+            .sort("timestamp", -1)
+            .limit(50)  # prevent overload
+        )
 
-    for r in rows:
-        r["id"] = str(r["_id"])
-        del r["_id"]
-        if isinstance(r.get("timestamp"), datetime.datetime):
-            r["timestamp"] = r["timestamp"].isoformat()
+        formatted = []
 
-    return {"history": rows}
+        for r in rows:
+            item = {
+                "id": str(r.get("_id")),
+                "topic": r.get("topic", ""),
+                "score": r.get("score", 0),
+                "total": r.get("total", 0),
+                "grade": r.get("grade", "N/A"),
+                "percentage": r.get("percentage", 0),
+                "timestamp": r.get("timestamp")
+            }
+
+            if isinstance(item["timestamp"], datetime.datetime):
+                item["timestamp"] = item["timestamp"].isoformat()
+
+            formatted.append(item)
+
+        return {"history": formatted}
+
+    except Exception as e:
+        print("❌ HISTORY ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
