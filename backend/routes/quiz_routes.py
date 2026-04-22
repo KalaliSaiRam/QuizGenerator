@@ -226,54 +226,78 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
 
     try:
         # ----------------------------
-        # CLEAN INPUT DATA (IMPORTANT)
+        # VALIDATE INPUT
+        # ----------------------------
+        if not data.questions or not isinstance(data.questions, list):
+            raise HTTPException(status_code=400, detail="Invalid questions data")
+
+        if not data.answers or not isinstance(data.answers, list):
+            raise HTTPException(status_code=400, detail="Invalid answers data")
+
+        # ----------------------------
+        # CLEAN ANSWERS
         # ----------------------------
         clean_answers = [
             ans if ans is not None else "" for ans in data.answers
         ]
 
-        if not data.questions or not isinstance(data.questions, list):
-            raise HTTPException(status_code=400, detail="Invalid questions data")
+        # ----------------------------
+        # LENGTH CHECK (VERY IMPORTANT)
+        # ----------------------------
+        if len(data.questions) != len(clean_answers):
+            raise HTTPException(
+                status_code=400,
+                detail="Mismatch between questions and answers"
+            )
 
-        if not isinstance(clean_answers, list):
-            raise HTTPException(status_code=400, detail="Invalid answers data")
-
-        print("DEBUG questions:", len(data.questions))
+        print("DEBUG questions count:", len(data.questions))
         print("DEBUG answers:", clean_answers)
+        print("DEBUG topic:", data.topic)
 
         # ----------------------------
-        # PROCESS RESULT
+        # SAFE ANALYZE CALL
         # ----------------------------
-        result = analyze_performance(data.questions, clean_answers, data.topic)
+        try:
+            result = analyze_performance(
+                data.questions,
+                clean_answers,
+                data.topic
+            )
+        except Exception as e:
+            print("❌ analyze_performance ERROR:", str(e))
+            raise HTTPException(status_code=500, detail=str(e))
 
         if not isinstance(result, dict):
             raise HTTPException(status_code=500, detail="Invalid result format")
 
+        # ----------------------------
+        # EXTRACT RESULT SAFELY
+        # ----------------------------
         score = result.get("score", 0)
         total = result.get("total", 0)
         grade = result.get("grade", "N/A")
 
         # ----------------------------
-        # SAFE PERCENTAGE CALCULATION
+        # SAFE PERCENTAGE
         # ----------------------------
-        if total > 0:
-            percentage = (score / total) * 100
-        else:
-            percentage = 0
+        percentage = (score / total) * 100 if total > 0 else 0
 
         # ----------------------------
-        # SAVE HISTORY (SAFE)
+        # SAVE HISTORY
         # ----------------------------
         if history_collection:
-            history_collection.insert_one({
-                "user_id": x_user_id,
-                "topic": data.topic,
-                "score": score,
-                "total": total,
-                "grade": grade,
-                "percentage": percentage,
-                "timestamp": datetime.datetime.utcnow()
-            })
+            try:
+                history_collection.insert_one({
+                    "user_id": x_user_id,
+                    "topic": data.topic,
+                    "score": score,
+                    "total": total,
+                    "grade": grade,
+                    "percentage": percentage,
+                    "timestamp": datetime.datetime.utcnow()
+                })
+            except Exception as db_err:
+                print("❌ DB ERROR:", str(db_err))
 
         return {
             "score": score,
@@ -282,9 +306,12 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
             "percentage": percentage
         }
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         print("❌ SUBMIT ERROR:", str(e))
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ----------------------------
 # History
