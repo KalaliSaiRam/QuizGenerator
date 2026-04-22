@@ -128,7 +128,9 @@ async def signup(user: UserSignup):
     if users_collection is None:
         raise HTTPException(status_code=500, detail="Database not connected")
 
-    if users_collection.find_one({"email": user.email}):
+    existing_user = users_collection.find_one({"email": user.email})
+
+    if existing_user is not None:
         raise HTTPException(status_code=400, detail="Email already exists")
 
     hashed_pw = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
@@ -285,7 +287,7 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
         # ----------------------------
         # SAVE HISTORY
         # ----------------------------
-        if history_collection:
+        if history_collection is not None:
             try:
                 history_collection.insert_one({
                     "user_id": x_user_id,
