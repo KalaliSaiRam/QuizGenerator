@@ -25,6 +25,7 @@ function QuizPage({ questions, topic }) {
     }, 1000);
 
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, timeLeft]);
 
   const handleAnswer = (questionIndex, optionIndex) => {
@@ -56,6 +57,8 @@ function QuizPage({ questions, topic }) {
         questions,
         answers: formattedAnswers,
         topic
+      }, {
+        headers: { "X-User-Id": localStorage.getItem("userId") || "" }
       });
       
       setResult(res.data);

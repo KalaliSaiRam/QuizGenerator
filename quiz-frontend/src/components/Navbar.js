@@ -5,11 +5,13 @@ import "./Navbar.css";
 function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const location = useLocation();
 
-  if (!isAuthenticated && location.pathname === "/login") {
-    return null; // Hide navbar on login page
+  if (!isAuthenticated && (location.pathname === "/login" || location.pathname === "/signup")) {
+    return null; // Hide navbar on login and signup pages
   }
 
   const handleLogout = () => {
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
     setIsAuthenticated(false);
   };
 

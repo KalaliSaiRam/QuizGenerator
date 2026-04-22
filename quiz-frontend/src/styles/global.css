@@ -140,11 +140,7 @@ h4 { font-size: 1.25rem; }
   transition: var(--transition-normal);
 }
 
-.card:hover {
-  border-color: var(--glass-border-highlight);
-  background: var(--bg-card-hover);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
-}
+
 
 /* Animations */
 @keyframes fadeIn {

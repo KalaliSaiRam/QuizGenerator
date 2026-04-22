@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Header
 from ai_engine.engine import process_input, generate_questions, analyze_performance
 from pydantic import BaseModel
 import fitz
@@ -7,31 +7,24 @@ from PIL import Image
 import pytesseract
 import tempfile
 import os
-import sqlite3
+import pymongo
 import datetime
+import bcrypt
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Database setup
-import sqlite3
-DB_PATH = "history.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            topic TEXT,
-            score INTEGER,
-            total INTEGER,
-            grade TEXT,
-            percentage REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-init_db()
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+try:
+    mongo_client = pymongo.MongoClient(MONGO_URI)
+    db = mongo_client["quiz_database"]
+    history_collection = db["history"]
+    users_collection = db["users"]
+except Exception as e:
+    print(f"Error connecting to MongoDB: {e}")
+    history_collection = None
+    users_collection = None
 
 import platform
 
@@ -51,12 +44,9 @@ def extract_pdf(file_path):
         page = doc.load_page(page_num)
         text = page.get_text()
 
-        # If it's a scanned PDF (e.g. newspaper image), get_text() might be empty.
-        # So we convert the page to an image and run OCR!
         if not text.strip():
             pix = page.get_pixmap(dpi=300)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            # Use PSM 6 assuming a single uniform block of text (like a newspaper column).
             text = pytesseract.image_to_string(img, config="--oem 3 --psm 6")
         
         if text.strip():
@@ -90,32 +80,26 @@ def extract_image(file_path):
     img = Image.open(file_path)
     if img.mode != "RGB":
         img = img.convert("RGB")
-    # Optimize for newspaper/dense text with psm 6
     text = pytesseract.image_to_string(img, config="--oem 3 --psm 6")
     return text
 
 # ----------------------------
 # Adaptive Feature Helpers
 # ----------------------------
-def get_user_performance_stats():
+def get_user_performance_stats(user_id: str):
+    if history_collection is None or not user_id:
+        return None
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT topic, percentage FROM history")
-        rows = cursor.fetchall()
-        conn.close()
-
+        rows = list(history_collection.find({"user_id": user_id}, {"topic": 1, "percentage": 1, "_id": 0}))
         if not rows: return None
         
-        total_acc = sum([r["percentage"] for r in rows]) / len(rows)
+        total_acc = sum([r.get("percentage", 0) for r in rows]) / len(rows)
         
-        # Calculate weak topics
         topic_scores = {}
         for r in rows:
-            t = r["topic"]
+            t = r.get("topic", "Unknown")
             if t not in topic_scores: topic_scores[t] = []
-            topic_scores[t].append(r["percentage"])
+            topic_scores[t].append(r.get("percentage", 0))
             
         weak_topics = []
         for t, scores in topic_scores.items():
@@ -133,13 +117,60 @@ def get_user_performance_stats():
 # ----------------------------
 # API Routes
 # ----------------------------
+
+class UserSignup(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+@router.post("/signup")
+async def signup(user: UserSignup):
+    if users_collection is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    existing = users_collection.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_pw = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
+    new_user = {
+        "name": user.name,
+        "email": user.email,
+        "password": hashed_pw.decode('utf-8'),
+        "created_at": datetime.datetime.utcnow()
+    }
+    res = users_collection.insert_one(new_user)
+    return {"user_id": str(res.inserted_id), "name": user.name}
+
+@router.post("/login")
+async def login(user: UserLogin):
+    if users_collection is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    record = users_collection.find_one({"email": user.email})
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+        
+    if not bcrypt.checkpw(user.password.encode('utf-8'), record["password"].encode('utf-8')):
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+        
+    return {"user_id": str(record["_id"]), "name": record.get("name", "User")}
+
 @router.post("/generate-quiz")
 async def generate_quiz(
     file: UploadFile = File(...),
     topic: str = Form(...),
     difficulty: str = Form(...),
-    count: int = Form(...)
+    count: int = Form(...),
+    x_user_id: str = Header(None)
 ):
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized: Please log in first.")
+
     suffix = os.path.splitext(file.filename)[1].lower()
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -159,55 +190,78 @@ async def generate_quiz(
     
     os.remove(tmp_path)
 
-    pipe = process_input(text)
+    try:
+        pipe = process_input(text)
 
-    # Fetch History to power Adaptive mode
-    stats = get_user_performance_stats()
+        # Fetch History to power Adaptive mode
+        stats = get_user_performance_stats(user_id=x_user_id)
 
-    questions = generate_questions(
-        topic,
-        difficulty,
-        count,
-        pipe["content"],
-        history_stats=stats
-    )
+        questions = generate_questions(
+            topic,
+            difficulty,
+            count,
+            pipe["content"],
+            history_stats=stats
+        )
 
-    return {
-        "questions": questions,
-        "word_count": pipe["word_count"],
-        "chunks": pipe["num_chunks"]
-    }
+        return {
+            "questions": questions,
+            "word_count": pipe["word_count"],
+            "chunks": pipe["num_chunks"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+class SubmitQuizData(BaseModel):
+    questions: list
+    answers: list
+    topic: str
 
 @router.post("/submit-quiz")
-async def submit_quiz(data: dict):
-    questions = data.get("questions")
-    answers = data.get("answers")
-    topic = data.get("topic")
+async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    questions = data.questions
+    answers = data.answers
+    topic = data.topic
 
     result = analyze_performance(questions, answers, topic)
     
     percentage = (result["score"] / result["total"]) * 100 if result["total"] > 0 else 0
 
     # Save to history DB
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO history (topic, score, total, grade, percentage) VALUES (?, ?, ?, ?, ?)",
-        (topic, result["score"], result["total"], result["grade"], percentage)
-    )
-    conn.commit()
-    conn.close()
+    if history_collection is not None:
+        history_collection.insert_one({
+            "user_id": x_user_id,
+            "topic": topic,
+            "score": result["score"],
+            "total": result["total"],
+            "grade": result["grade"],
+            "percentage": percentage,
+            "timestamp": datetime.datetime.utcnow()
+        })
 
     return result
 
 @router.get("/history")
-async def get_history():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM history ORDER BY timestamp DESC")
-    rows = cursor.fetchall()
-    conn.close()
+async def get_history(x_user_id: str = Header(None)):
+    if history_collection is None:
+        return {"history": []}
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     
-    history_list = [dict(row) for row in rows]
-    return {"history": history_list}
+    rows = list(history_collection.find({"user_id": x_user_id}).sort("timestamp", -1))
+    
+    history_list = []
+    for row in rows:
+        row["id"] = str(row["_id"])
+        del row["_id"]
+        # Format timestamp to ISO string for frontend if it's a datetime object
+        if isinstance(row.get("timestamp"), datetime.datetime):
+            row["timestamp"] = row["timestamp"].isoformat() + "Z"
+        history_list.append(row)
+        
+    return {"history": history_list}

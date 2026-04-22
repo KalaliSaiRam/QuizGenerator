@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import UploadPage from "./pages/UploadPage";
 import QuizPage from "./pages/QuizPage";
 import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 import DashboardPage from "./pages/DashboardPage";
 import Navbar from "./components/Navbar";
 import "./styles/global.css";
@@ -10,7 +11,9 @@ import "./styles/global.css";
 function App() {
   const [questions, setQuestions] = useState([]);
   const [topic, setTopic] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem("userId");
+  });
 
   return (
     <BrowserRouter>
@@ -19,7 +22,11 @@ function App() {
         <Routes>
           <Route 
             path="/login" 
-            element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} 
+            element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage setIsAuthenticated={setIsAuthenticated} />} 
+          />
+          <Route 
+            path="/signup" 
+            element={isAuthenticated ? <Navigate to="/" replace /> : <SignupPage setIsAuthenticated={setIsAuthenticated} />} 
           />
           <Route
             path="/"

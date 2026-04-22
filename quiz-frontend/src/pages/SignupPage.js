@@ -1,28 +1,30 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import "./LoginPage.css";
+import "./SignupPage.css";
 
-function LoginPage({ setIsAuthenticated }) {
+function SignupPage({ setIsAuthenticated }) {
   const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
-    
-    if (!email || !password) {
-      setError("Please fill in both email and password.");
+
+    if (!name || !email || !password) {
+      setError("Please fill in all fields.");
       return;
     }
 
     try {
       setLoading(true);
       const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
-      const res = await axios.post(`${apiUrl}/login`, {
+      const res = await axios.post(`${apiUrl}/signup`, {
+        name,
         email,
         password
       });
@@ -38,7 +40,7 @@ function LoginPage({ setIsAuthenticated }) {
       if (err.response && err.response.data && err.response.data.detail) {
         setError(err.response.data.detail);
       } else {
-        setError("Invalid credentials or server error.");
+        setError("Error creating account. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -46,27 +48,30 @@ function LoginPage({ setIsAuthenticated }) {
   };
 
   return (
-    <div className="login-split-container">
-      {/* Left Promotional Side */}
-      <div className="login-visual">
-        <div className="visual-content">
-          <h1>Questify AI</h1>
-          <p>
-            Experience the future of personalized learning. Generate adaptive diagnostic quizzes from any PDF or document instantly, powered by state of the art artificial intelligence.
-          </p>
-        </div>
-      </div>
+    <div className="signup-container">
+      <div className="signup-card-wrapper fade-in">
+        <div className="signup-card card">
+          <div className="signup-header">
+            <div className="logo-icon">🚀</div>
+            <h2>Create an Account</h2>
+            <p>Join the AI Quiz Generator and start learning faster.</p>
+          </div>
 
-      {/* Right Form Side */}
-      <div className="login-form-side">
-        <div className="login-form-wrapper">
-          <h2>Welcome Back</h2>
-          <p className="subtitle">Sign in to access your dashboard.</p>
+          {error && <div className="error-message">{error}</div>}
 
-          {error && <div className="auth-error">{error}</div>}
+          <form onSubmit={handleSignup} className="signup-form">
+            <div className="form-group">
+              <label htmlFor="name">Full Name</label>
+              <input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
 
-          <form onSubmit={handleLogin} className="modern-form">
-            <div className="input-group">
+            <div className="form-group">
               <label htmlFor="email">Email Address</label>
               <input
                 id="email"
@@ -77,7 +82,7 @@ function LoginPage({ setIsAuthenticated }) {
               />
             </div>
             
-            <div className="input-group">
+            <div className="form-group">
               <label htmlFor="password">Password</label>
               <input
                 id="password"
@@ -86,22 +91,20 @@ function LoginPage({ setIsAuthenticated }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <div className="forgot-link">
-                <a href="#reset">Forgot Password?</a>
-              </div>
             </div>
 
             <button
               type="submit"
-              className={`btn btn-primary submit-btn ${loading ? "loading" : ""}`}
+              className={`generate-btn btn-primary ${loading ? "loading" : ""}`}
               disabled={loading}
+              style={{ width: "100%", marginTop: "10px" }}
             >
-              {loading ? <span className="spinner"></span> : "Sign Into Account"}
+              {loading ? <span className="spinner"></span> : "Sign Up"}
             </button>
           </form>
 
-          <div className="signup-prompt">
-            Don't have an account? <Link to="/signup">Register Now</Link>
+          <div className="signup-footer">
+            <p>Already have an account? <Link to="/login">Log in here</Link></p>
           </div>
         </div>
       </div>
@@ -109,4 +112,4 @@ function LoginPage({ setIsAuthenticated }) {
   );
 }
 
-export default LoginPage;
+export default SignupPage;

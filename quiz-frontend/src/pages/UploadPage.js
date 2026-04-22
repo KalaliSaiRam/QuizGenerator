@@ -57,7 +57,10 @@ function UploadPage({ setQuestions, setTopic }) {
       const res = await axios.post(
         `${apiUrl}/generate-quiz`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        { headers: { 
+          "Content-Type": "multipart/form-data",
+          "X-User-Id": localStorage.getItem("userId") || ""
+        } }
       );
 
       setQuestions(res.data.questions);
@@ -65,7 +68,11 @@ function UploadPage({ setQuestions, setTopic }) {
       navigate("/quiz");
     } catch (err) {
       console.error(err);
-      alert("Error generating quiz");
+      if (err.response && err.response.data && err.response.data.detail) {
+        alert("Error: " + err.response.data.detail);
+      } else {
+        alert("Error generating quiz");
+      }
     } finally {
       setLoading(false);
     }

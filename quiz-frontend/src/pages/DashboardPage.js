@@ -15,7 +15,9 @@ function DashboardPage() {
   const fetchHistory = async () => {
     try {
       const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
-      const res = await axios.get(`${apiUrl}/history`);
+      const res = await axios.get(`${apiUrl}/history`, {
+        headers: { "X-User-Id": localStorage.getItem("userId") || "" }
+      });
       setHistory(res.data.history);
       setError(null);
     } catch (err) {
