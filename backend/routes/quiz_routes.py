@@ -224,22 +224,67 @@ async def submit_quiz(data: SubmitQuizData, x_user_id: str = Header(None)):
     if not x_user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    result = analyze_performance(data.questions, data.answers, data.topic)
+    try:
+        # ----------------------------
+        # CLEAN INPUT DATA (IMPORTANT)
+        # ----------------------------
+        clean_answers = [
+            ans if ans is not None else "" for ans in data.answers
+        ]
 
-    percentage = (result["score"] / result["total"]) * 100 if result["total"] > 0 else 0
+        if not data.questions or not isinstance(data.questions, list):
+            raise HTTPException(status_code=400, detail="Invalid questions data")
 
-    if history_collection:
-        history_collection.insert_one({
-            "user_id": x_user_id,
-            "topic": data.topic,
-            "score": result["score"],
-            "total": result["total"],
-            "grade": result["grade"],
-            "percentage": percentage,
-            "timestamp": datetime.datetime.utcnow()
-        })
+        if not isinstance(clean_answers, list):
+            raise HTTPException(status_code=400, detail="Invalid answers data")
 
-    return result
+        print("DEBUG questions:", len(data.questions))
+        print("DEBUG answers:", clean_answers)
+
+        # ----------------------------
+        # PROCESS RESULT
+        # ----------------------------
+        result = analyze_performance(data.questions, clean_answers, data.topic)
+
+        if not isinstance(result, dict):
+            raise HTTPException(status_code=500, detail="Invalid result format")
+
+        score = result.get("score", 0)
+        total = result.get("total", 0)
+        grade = result.get("grade", "N/A")
+
+        # ----------------------------
+        # SAFE PERCENTAGE CALCULATION
+        # ----------------------------
+        if total > 0:
+            percentage = (score / total) * 100
+        else:
+            percentage = 0
+
+        # ----------------------------
+        # SAVE HISTORY (SAFE)
+        # ----------------------------
+        if history_collection:
+            history_collection.insert_one({
+                "user_id": x_user_id,
+                "topic": data.topic,
+                "score": score,
+                "total": total,
+                "grade": grade,
+                "percentage": percentage,
+                "timestamp": datetime.datetime.utcnow()
+            })
+
+        return {
+            "score": score,
+            "total": total,
+            "grade": grade,
+            "percentage": percentage
+        }
+
+    except Exception as e:
+        print("❌ SUBMIT ERROR:", str(e))
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # ----------------------------
 # History
