@@ -49,26 +49,51 @@ function QuizPage({ questions, topic }) {
   };
 
   const submitQuiz = async () => {
-    try {
-      const formattedAnswers = questions.map((_, index) => answers[index]);
-      
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
-      const res = await axios.post(`${apiUrl}/submit-quiz`, {
+  try {
+    const formattedAnswers = questions.map((_, index) => answers[index]);
+
+    const apiUrl = process.env.REACT_APP_API_URL;
+
+    if (!apiUrl) {
+      alert("API URL not configured");
+      return;
+    }
+
+    const userId = localStorage.getItem("userId");
+
+    if (!userId) {
+      alert("User not logged in");
+      return;
+    }
+
+    const res = await axios.post(
+      `${apiUrl}/submit-quiz`,
+      {
         questions,
         answers: formattedAnswers,
         topic
-      }, {
-        headers: { "X-User-Id": localStorage.getItem("userId") || "" }
-      });
-      
-      setResult(res.data);
-      setSubmitted(true);
-      setShowResult(true);
-    } catch (err) {
-      console.error(err);
-      alert("Error submitting quiz");
+      },
+      {
+        headers: {
+          "x-user-id": userId   // ✅ FIXED HEADER
+        }
+      }
+    );
+
+    setResult(res.data);
+    setSubmitted(true);
+    setShowResult(true);
+
+  } catch (err) {
+    console.error("Submit Error:", err);
+
+    if (err.response) {
+      alert(`Error: ${err.response.data.detail || "Server error"}`);
+    } else {
+      alert("Network error. Check backend or CORS.");
     }
-  };
+  }
+};
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
