@@ -15,7 +15,7 @@ app = FastAPI(
 # CORS Configuration
 # ----------------------------
 origins = [
-    "https://quiz-generator-frontend-kappa.vercel.app",
+    "https://ai-quizz-genmultimodal.vercel.app",
     "http://localhost:3000"
 ]
 
